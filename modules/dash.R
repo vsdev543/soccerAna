@@ -1,0 +1,227 @@
+df.r<-readRDS("data/out.Rds")
+
+m <- list(
+  l = 50,
+  r = 50,
+  b = 50,
+  t = 50,
+  pad = 20
+)
+
+dash_UI <- function(id,title) {
+  ns <- NS(id)
+  fluidPage(style="padding:0px 5vw; background-color: #364156; color:#fff; height:100vh; overflow-y: auto;",
+      div(style="display:flex; justify-content:space-between;align-items:baseline;",
+        span(title,style="font-size:2.5em;margin-top:10px; font-weight:900;",class="brand"),
+        radioGroupButtons(
+          inputId = ns("tab"),
+          label = NULL,
+          choices = c("Stat", 
+                      "Ranking"),
+          status = "success"
+        )
+        ),
+      fluidRow(column(9,
+                          uiOutput(ns('main'))
+                      ),
+               column(3, 
+                      uiOutput(ns('side'))
+               ))
+    
+  )
+}
+
+dash <- function(input, output, session) {
+  ns<-session$ns
+  
+  df<-reactive({
+    df<-df.r
+    
+    if(input$sortBy!=""){
+    if(!is.null(input$sortBy)){
+      if(input$sortBy=="team"){
+      df<-df%>%
+        arrange(df[,input$sortBy])
+      }else{
+        df<-df%>%
+          arrange(desc(df[,input$sortBy]))
+      }
+    }
+    }
+    df
+  })
+  
+  dff<-reactive({
+    req(input[[paste0('homeScore',"W")]])
+    df<-df.r%>%
+      select(team,homeScore, awayScore, matches.won, total.matches)%>%
+      mutate(
+        homeScore=input[[paste0('homeScore',"W")]]*homeScore,
+        awayScore=input[[paste0('awayScore',"W")]]*awayScore,
+        matches.won=input[[paste0('matches.won',"W")]]*matches.won,
+        total.matches=input[[paste0('total.matches',"W")]]*total.matches
+        )%>%
+      mutate(score=homeScore+awayScore+matches.won+total.matches)%>%
+      arrange(desc(score))
+    
+    df<-df[1:input$topY,]
+    df$idx<-1:nrow(df)
+    
+    df
+  })
+  
+  
+  
+  
+  figs<-readRDS("data/figs.Rds")
+  names(figs)<-df.r$team
+  
+  output$side<-renderUI({
+    switch(input$tab,
+           "Stat" = {
+             div(
+               style = 'background-color:#212D40;border-radius:10px;padding:10px;',
+               selectInput(
+                 ns("sortBy"),
+                 "Sort by",
+                 choices = names(df.r),
+                 width = "100%"
+               ),
+               selectInput(
+                 ns("topX"),
+                 "Number of top entries",
+                 choices = c(10, 20, 50, 100, nrow(df.r)),
+                 width = "100%"
+               ),
+               selectInput(
+                 ns("param"),
+                 "Parameters",
+                 choices = c("All", names(df.r)[-1]),
+                 width = "100%"
+               )
+             )
+           },
+           "Ranking" = {
+             div(
+               style = 'background-color:#212D40;border-radius:10px;padding:10px;',
+               lapply(c('homeScore', 'awayScore', 'matches.won', 'total.matches'),function(param){
+                 sliderInput(inputId = ns(paste0(param,"W")),label = paste("weight for", param),min = 0,max = 1,value = 1,width = "100%")
+               }),
+               selectInput(
+                 ns("topY"),
+                 "Number of top entries",
+                 choices = c(10, 20, 50, 100, nrow(df.r)),
+                 width = "100%"
+               )
+             )
+           }
+           )
+  })
+  
+  
+  output$main<-renderUI({
+    switch(input$tab,
+           "Stat" = {
+             switch (input$param,
+               "All" = {
+                 div(class = 'grid-2',
+                     style = "width=100vw;",
+                     lapply(df()$team[1:input$topX], function(t) {
+                       renderPlotly(figs[[t]])
+                     }))
+               },
+               "homeScore" = {
+                 df<-df()[1:input$topX,]%>%
+                   select(c("team",input$param))
+                 
+                 plot_ly(df,type = 'bar',x=~team,y=~homeScore)%>%
+                   layout(title=paste("homeScore of Top",input$topX,"teams by",input$sortBy),
+                          margin = m
+                          )
+               },
+               "awayScore" = {
+                 df<-df()[1:input$topX,]%>%
+                   select(c("team",input$param))
+                 
+                 plot_ly(df,type = 'bar',x=~team,y=~awayScore)%>%
+                   layout(title=paste("awayScore of Top",input$topX,"teams by",input$sortBy),
+                          margin = m
+                   )
+               },
+               "matches.won" = {
+                 df<-df()[1:input$topX,]%>%
+                   select(c("team",input$param))
+                 
+                 plot_ly(df,type = 'bar',x=~team,y=~matches.won)%>%
+                   layout(title=paste("matches.won of Top",input$topX,"teams by",input$sortBy),
+                          margin = m
+                   )
+               },
+               "totalScore" = {
+                 df<-df()[1:input$topX,]%>%
+                   select(c("team",awayScore,homeScore))
+                 
+                 plot_ly(df,type = 'bar',x=~team,y=~homeScore,name = 'homeScore')%>%
+                   add_trace(data = df,x=~team,y=~awayScore,name="awayScore")%>%
+                   layout(title=paste("totalScore of Top",input$topX,"teams by",input$sortBy),
+                          margin = m,
+                          barmode = 'stack'
+                   )
+               },
+               'total.matches' = {
+                 df<-df()[1:input$topX,]%>%
+                   select(c("team",total.matches,matches.won))%>%
+                   mutate(matches.lost=total.matches-matches.won)
+                 
+                 plot_ly(df,type = 'bar',x=~team,y=~matches.lost,name = 'matches.lost')%>%
+                   add_trace(data = df,x=~team,y=~matches.won,name="matches.won")%>%
+                   layout(title=paste("total.matches of Top",input$topX,"teams by",input$sortBy),
+                          margin = m,
+                          barmode = 'stack'
+                   )
+               }
+             )
+           },
+           "Ranking" = {
+             tagList(
+             lapply(dff()$team,function(t){
+               row<-df()[df()$team==t,]
+               div(style="background-color:#fff; padding:10px; border-radius:10px; margin-bottom:20px;display:flex;",
+                plotlyOutput(ns(paste(t,"pl")),width = '15vw',height = '200px'),
+                # div(style='width:600px;',
+                #   progressBar(value = row[["homeScore"]],total = row[["totalScore"]],status = 'success',id = paste(t,'pr'))
+                # ),
+                plotlyOutput(ns(paste(t,"plB")),width = '35vw',height = '200px'),
+                div(
+                  style="width:200px; height:200px; border-radius:50%; border:solid 20px #DA4167; display:flex; justify-content:center; align-items:center; color:#333; font-weight:900; font-size:2em;text-align:center;",
+                  "#",dff()[dff()$team==t,"idx"],br(),
+                  dff()[dff()$team==t,"score"]
+                )
+               )
+             })
+             
+             )
+           }
+           )
+  })
+  
+  observe({
+    req(dff())
+    lapply(dff()$team,function(t){
+      row<-df()[df()$team==t,]
+      
+        output[[paste(t,"pl")]]<-renderPlotly(figs[[t]])
+        
+        output[[paste(t,"plB")]]<-renderPlotly({
+          plot_ly(y = c("total.matches","totalScore"), x = c(row$matches.won,row$homeScore),type = 'bar', orientation = 'h',
+                  text = c("matches.won","homeScore")
+                  )%>%
+            add_trace(y = c("total.matches","totalScore"), x = c(row$total.matches-row$matches.won,row$awayScore),
+                      text = c("matches.lost","awayScore")
+                      )%>%
+            layout(barmode = 'stack',showlegend = FALSE)
+        })
+    })
+  })
+  
+}

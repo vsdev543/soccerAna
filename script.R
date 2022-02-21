@@ -3,7 +3,6 @@ library(plotly)
 library(lubridate)
 
 df<-as_tibble(read.csv("data/data.csv"))%>%
-  rowwise()%>%
   mutate(date=ymd(date))
 
 winner<-apply(df,1,function(row){
@@ -55,6 +54,14 @@ arrBy<-'totalScore'
 out<-out%>%
   arrange(desc(out[,arrBy]))
 
+m <- list(
+  l = 50,
+  r = 50,
+  b = 50,
+  t = 50,
+  pad = 20
+)
+
 figs<-apply(out,1,function(row){
     fig <- plot_ly(
       type = 'scatterpolar',
@@ -63,13 +70,22 @@ figs<-apply(out,1,function(row){
       fill = 'toself'
     )%>%
       layout(
-        title=as.character(row[['team']])
+        title=as.character(row[['team']]),
+            polar = list(
+              radialaxis = list(
+                visible = T
+              )
+            ),
+            showlegend = F,
+        margin = m
       )
     
     fig
 })
 
-out
+names(figs)<-out$team
+
+saveRDS(out,"data/out.Rds")
 saveRDS(figs,"data/figs.Rds")
 
 
