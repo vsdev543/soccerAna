@@ -79,7 +79,7 @@ dash <- function(input, output, session) {
   output$side<-renderUI({
     switch(input$tab,
            "Stat" = {
-             div(
+             div(class="leftT",
                style = 'background-color:#212D40;border-radius:10px;padding:10px;',
                selectInput(
                  ns("sortBy"),
@@ -102,7 +102,7 @@ dash <- function(input, output, session) {
              )
            },
            "Ranking" = {
-             div(
+             div(class="leftT",
                style = 'background-color:#212D40;border-radius:10px;padding:10px;',
                lapply(c('homeScore', 'awayScore', 'matches.won', 'total.matches'),function(param){
                  sliderInput(inputId = ns(paste0(param,"W")),label = paste("weight for", param),min = 0,max = 1,value = 1,width = "100%")
@@ -186,13 +186,13 @@ dash <- function(input, output, session) {
              tagList(
              lapply(dff()$team,function(t){
                row<-df()[df()$team==t,]
-               div(style="background-color:#fff; padding:10px; border-radius:10px; margin-bottom:20px;display:flex;",
+               div(style="background-color:#fff; padding:10px; border-radius:10px; margin-bottom:20px;display:flex;",class="leftT",
                 plotlyOutput(ns(paste(t,"pl")),width = '15vw',height = '200px'),
                 # div(style='width:600px;',
                 #   progressBar(value = row[["homeScore"]],total = row[["totalScore"]],status = 'success',id = paste(t,'pr'))
                 # ),
                 plotlyOutput(ns(paste(t,"plB")),width = '35vw',height = '200px'),
-                div(
+                div(class="leftT",
                   style="width:200px; height:200px; border-radius:50%; border:solid 20px #DA4167; display:flex; justify-content:center; align-items:center; color:#333; font-weight:900; font-size:2em;text-align:center;",
                   "#",dff()[dff()$team==t,"idx"],br(),
                   dff()[dff()$team==t,"score"]

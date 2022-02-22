@@ -94,4 +94,27 @@ body{
 
 .main-svg{
   border-radius: 10px;
+  
+  animation-name: fromL;
+  animation-duration: 0.8s;
+  animation-timing-function: ease-in-out;
+}
+
+
+@keyframes fromL {
+  0%   { opacity:0; transform:translate(-2vw,0);}
+  100% {opacity:1; transform:translate(0,0);}
+}
+
+
+.leftT{
+  animation-name: fromB;
+  animation-duration: 0.4s;
+  animation-timing-function: ease-in-out;
+}
+
+
+@keyframes fromB {
+  0%   { opacity:0; transform:translate(0vw,5vh);}
+  100% {opacity:1; transform:translate(0,0);}
 }
