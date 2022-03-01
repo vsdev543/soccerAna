@@ -1,4 +1,4 @@
-df.r<-readRDS("data/out.Rds")
+
 
 m <- list(
   l = 50,
@@ -25,6 +25,8 @@ dash_UI <- function(id,title) {
                           uiOutput(ns('main'))
                       ),
                column(3, 
+                      dateRangeInput(inputId = ns('dRange'),label = NULL,start = NULL,end = NULL),
+                      actionBttn(ns("calR"),"Calculate",icon = icon("refresh"),style = 'stretch',block = T),hr(),
                       uiOutput(ns('side'))
                ))
     
@@ -34,8 +36,16 @@ dash_UI <- function(id,title) {
 dash <- function(input, output, session) {
   ns<-session$ns
   
+  df.r<-reactiveFileReader(intervalMillis = 1000,session = session,filePath = "data/out.Rds",readFunc = readRDS)
+  
+  observeEvent(input$calR,{
+    withProgress(message = "Calculating",
+    callDat("data/data.csv",dates=input$dRange)
+    )
+  })
+  
   df<-reactive({
-    df<-df.r
+    df<-df.r()
     
     if(input$sortBy!=""){
     if(!is.null(input$sortBy)){
@@ -53,7 +63,7 @@ dash <- function(input, output, session) {
   
   dff<-reactive({
     req(input[[paste0('homeScore',"W")]])
-    df<-df.r%>%
+    df<-df.r()%>%
       select(team,homeScore, awayScore, matches.won, total.matches)%>%
       mutate(
         homeScore=input[[paste0('homeScore',"W")]]*homeScore,
@@ -73,8 +83,11 @@ dash <- function(input, output, session) {
   
   
   
-  figs<-readRDS("data/figs.Rds")
-  names(figs)<-df.r$team
+  figs<-reactiveFileReader(intervalMillis = 1000,session = session,filePath = "data/figs.Rds",readFunc = function(path){
+    figs<-readRDS(path)
+    names(figs)<-df.r()$team 
+    figs
+  })
   
   output$side<-renderUI({
     switch(input$tab,
@@ -84,19 +97,19 @@ dash <- function(input, output, session) {
                selectInput(
                  ns("sortBy"),
                  "Sort by",
-                 choices = names(df.r),
+                 choices = names(df.r()),
                  width = "100%"
                ),
                selectInput(
                  ns("topX"),
                  "Number of top entries",
-                 choices = c(10, 20, 50, 100, nrow(df.r)),
+                 choices = c(10, 20, 50, 100, nrow(df.r())),
                  width = "100%"
                ),
                selectInput(
                  ns("param"),
                  "Parameters",
-                 choices = c("All", names(df.r)[-1]),
+                 choices = c("All", names(df.r())[-1]),
                  width = "100%"
                )
              )
@@ -110,7 +123,7 @@ dash <- function(input, output, session) {
                selectInput(
                  ns("topY"),
                  "Number of top entries",
-                 choices = c(10, 20, 50, 100, nrow(df.r)),
+                 choices = c(10, 20, 50, 100, nrow(df.r())),
                  width = "100%"
                )
              )
@@ -127,7 +140,7 @@ dash <- function(input, output, session) {
                  div(class = 'grid-2',
                      style = "width=100vw;",
                      lapply(df()$team[1:input$topX], function(t) {
-                       renderPlotly(figs[[t]])
+                       renderPlotly(figs()[[t]])
                      }))
                },
                "homeScore" = {
@@ -165,7 +178,8 @@ dash <- function(input, output, session) {
                    add_trace(data = df,x=~team,y=~awayScore,name="awayScore")%>%
                    layout(title=paste("totalScore of Top",input$topX,"teams by",input$sortBy),
                           margin = m,
-                          barmode = 'stack'
+                          barmode = 'stack',
+                          yaxis = list(title = 'Score')
                    )
                },
                'total.matches' = {
@@ -177,7 +191,8 @@ dash <- function(input, output, session) {
                    add_trace(data = df,x=~team,y=~matches.won,name="matches.won")%>%
                    layout(title=paste("total.matches of Top",input$topX,"teams by",input$sortBy),
                           margin = m,
-                          barmode = 'stack'
+                          barmode = 'stack',
+                          yaxis = list(title = 'Matches')
                    )
                }
              )
@@ -210,7 +225,7 @@ dash <- function(input, output, session) {
     lapply(dff()$team,function(t){
       row<-df()[df()$team==t,]
       
-        output[[paste(t,"pl")]]<-renderPlotly(figs[[t]])
+        output[[paste(t,"pl")]]<-renderPlotly(figs()[[t]])
         
         output[[paste(t,"plB")]]<-renderPlotly({
           plot_ly(y = c("total.matches","totalScore"), x = c(row$matches.won,row$homeScore),type = 'bar', orientation = 'h',

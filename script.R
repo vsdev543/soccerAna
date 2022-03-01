@@ -2,8 +2,16 @@ library(dplyr)
 library(plotly)
 library(lubridate)
 
-df<-as_tibble(read.csv("data/data.csv"))%>%
+
+callDat<-function(path="data/data.csv",dates=c('1998-08-30','2020-08-30')){
+df<-as_tibble(read.csv(path))%>%
   mutate(date=ymd(date))
+
+if(!is.null(dates)){
+ df<-df%>%
+   filter(date>=ymd(dates[1]),date<=ymd(dates[2]))
+}
+
 
 winner<-apply(df,1,function(row){
   if(row[["home_score"]]>row[["away_score"]]){
@@ -88,5 +96,7 @@ names(figs)<-out$team
 saveRDS(out,"data/out.Rds")
 saveRDS(figs,"data/figs.Rds")
 
+}
 
 
+# callDat("data/data.csv",dates=c('1998-08-30','2020-08-30'))

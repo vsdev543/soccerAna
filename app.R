@@ -13,6 +13,10 @@ appName<-"soccerAna!"
 
 source("modules/welcome.R")
 source("modules/dash.R")
+source("script.R")
+
+dfN<-read.csv("data/data.csv")%>%
+  mutate(date=ymd(date))
 
 ui <- div(
   tags$head(
@@ -41,6 +45,13 @@ server <- function(input, output, session) {
   
   observeEvent(input[[NS(namespace = 'wel','goIn')]],{
     r$k<-r$k+1
+  })
+  
+  observe({
+    print(input[[
+      NS(id = 'dRange',namespace = 'dash')
+    ]])
+    updateDateRangeInput(session = session,inputId = NS(id = 'dRange',namespace = 'dash'),start = min(dfN$date),end = max(dfN$date))
   })
   
 }
