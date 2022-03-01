@@ -25,7 +25,7 @@ dash_UI <- function(id,title) {
                           uiOutput(ns('main'))
                       ),
                column(3, 
-                      dateRangeInput(inputId = ns('dRange'),label = NULL,start = NULL,end = NULL),
+                      dateRangeInput(inputId = ns('dRange'),label = NULL,start = NULL,end = NULL,width = "100%"),
                       actionBttn(ns("calR"),"Calculate",icon = icon("refresh"),style = 'stretch',block = T),hr(),
                       uiOutput(ns('side'))
                ))
