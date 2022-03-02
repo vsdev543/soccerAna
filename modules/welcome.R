@@ -18,7 +18,8 @@ welcome_UI <- function(id,title) {
           tags$li("Thuis goals"),
           tags$li("Uit goals"),
          tags$li("Totale goals") 
-        )
+        ),
+        tags$a("Data source",href= "https://www.kaggle.com/martj42/international-football-results-from-1872-to-2017",style="color:#1E91D6;")
         ),
         
         
